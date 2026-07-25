@@ -1,65 +1,152 @@
-import Image from "next/image";
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import axios from '@/lib/axios'
+import toast from 'react-hot-toast'
 
 export default function Home() {
+  const router = useRouter()
+  const [menuItems, setMenuItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [cart, setCart] = useState([]) // Cart state
+  const [tableNumber] = useState(5) // Hardcoded for now (simulating QR scan)
+
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const res = await axios.get('/menu')
+        setMenuItems(res.data)
+      } catch (error) {
+        console.error('Failed to fetch menu', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchMenu()
+  }, [])
+
+  const addToCart = (item) => {
+    const existingItem = cart.find((i) => i.menuItemId === item._id)
+    if (existingItem) {
+      setCart(
+        cart.map((i) =>
+          i.menuItemId === item._id ? { ...i, quantity: i.quantity + 1 } : i,
+        ),
+      )
+    } else {
+      setCart([
+        ...cart,
+        {
+          menuItemId: item._id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+        },
+      ])
+    }
+    toast.success(`${item.name} added to cart`)
+  }
+
+  const cartTotal = cart.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0,
+  )
+
+  const placeOrder = async () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token')
+    if (!token) {
+      toast.error('Please login to place an order')
+      router.push('/login')
+      return
+    }
+
+    try {
+      const res = await axios.post('/orders', {
+        tableNumber,
+        items: cart.map(({ name, price, ...keep }) => keep), // Strip out name/price, backend handles it
+      })
+      toast.success('Order sent to the kitchen!')
+      setCart([]) // Clear cart
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to place order')
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-gray-50 pb-32">
+      {' '}
+      {/* Added padding bottom so cart doesn't cover menu */}
+      <div className="max-w-4xl mx-auto p-8">
+        <h1 className="text-4xl font-bold text-center mb-2 text-gray-900">
+          DineFlow Menu
+        </h1>
+        <p className="text-center text-gray-500 mb-10">
+          Table {tableNumber} • Scan, Order, Eat.
+        </p>
+
+        {loading ? (
+          <p className="text-center">Loading menu...</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {menuItems.map((item) => (
+              <div
+                key={item._id}
+                className={`bg-white p-6 rounded-2xl shadow-sm border ${!item.isAvailable ? 'opacity-50' : ''}`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h2 className="text-xl font-bold">{item.name}</h2>
+                  <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full font-semibold">
+                    ${item.price}
+                  </span>
+                </div>
+                <p className="text-gray-500 text-sm mb-4">{item.description}</p>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-gray-400">
+                    Prep: {item.prepTimeMins} mins
+                  </span>
+
+                  {item.isAvailable ? (
+                    <button
+                      onClick={() => addToCart(item)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+                    >
+                      Add to Order
+                    </button>
+                  ) : (
+                    <span className="text-red-500 text-sm font-semibold">
+                      Sold Out
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Floating Cart UI */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-2xl p-4">
+          <div className="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+              <p className="font-bold text-lg">{cart.length} item(s) in cart</p>
+              <p className="text-gray-500">
+                Total:{' '}
+                <span className="font-bold text-blue-600">
+                  ${cartTotal.toFixed(2)}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={placeOrder}
+              className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Place Order
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      )}
     </div>
-  );
+  )
 }
