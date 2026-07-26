@@ -1,11 +1,10 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 import { CheckCircle, ChefHat, ShoppingBag, Bell } from 'lucide-react'
 
-export default function TrackOrder() {
+function TrackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tableNumber = searchParams.get('table') || '1'
@@ -18,11 +17,9 @@ export default function TrackOrder() {
 
     const fetchActiveOrder = async () => {
       try {
-        // We fetch the bill, but filter for orders that are NOT paid
         const res = await axios.get(`/orders/table/${tableNumber}`)
         if (!isMounted) return
 
-        // Find the most recent order that is still being prepared
         const active = res.data.orders.find((o) =>
           ['received', 'preparing', 'ready', 'served'].includes(o.status),
         )
@@ -35,7 +32,6 @@ export default function TrackOrder() {
     }
 
     fetchActiveOrder()
-    // Poll every 3 seconds for real-time updates
     const interval = setInterval(fetchActiveOrder, 3000)
 
     return () => {
@@ -51,7 +47,6 @@ export default function TrackOrder() {
       </div>
     )
 
-  // Define the steps
   const steps = [
     { key: 'received', label: 'Order Received', icon: ShoppingBag },
     { key: 'preparing', label: 'Preparing Food', icon: ChefHat },
@@ -59,7 +54,6 @@ export default function TrackOrder() {
     { key: 'served', label: 'Served. Enjoy!', icon: CheckCircle },
   ]
 
-  // Find which step we are currently on
   const currentStepIndex = activeOrder
     ? steps.findIndex((step) => step.key === activeOrder.status)
     : -1
@@ -92,7 +86,6 @@ export default function TrackOrder() {
             </div>
           ) : (
             <div>
-              {/* Order Items Summary */}
               <div className="mb-8 p-4 bg-black/50 rounded-xl border border-zinc-800">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">
                   Your Order:
@@ -109,7 +102,6 @@ export default function TrackOrder() {
                 ))}
               </div>
 
-              {/* Progress Tracker */}
               <div className="space-y-6">
                 {steps.map((step, index) => {
                   const isCompleted = index < currentStepIndex
@@ -153,5 +145,20 @@ export default function TrackOrder() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrap in Suspense to fix Vercel build error with useSearchParams
+export default function TrackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center text-amber-400">
+          Loading...
+        </div>
+      }
+    >
+      <TrackContent />
+    </Suspense>
   )
 }

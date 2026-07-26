@@ -1,6 +1,5 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
@@ -13,7 +12,8 @@ import {
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 
-export default function BillPage() {
+// 1. Move all your existing logic into this inner component
+function BillContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tableNumber = searchParams.get('table') || '1'
@@ -27,7 +27,7 @@ export default function BillPage() {
   const [isPending, setIsPending] = useState(false)
   const [isPaid, setIsPaid] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [paidAmount, setPaidAmount] = useState(0) // To hold the amount when bill clears
+  const [paidAmount, setPaidAmount] = useState(0)
   const [contactInfo, setContactInfo] = useState('')
 
   useEffect(() => {
@@ -40,7 +40,6 @@ export default function BillPage() {
 
         setOrders((prevOrders) => {
           if (prevOrders.length > 0 && res.data.orders.length === 0) {
-            // Calculate paid amount before clearing (Subtotal + 5% GST)
             const paidTotal =
               prevOrders.reduce((sum, o) => sum + o.totalAmount, 0) * 1.05
             setPaidAmount(paidTotal)
@@ -102,7 +101,7 @@ export default function BillPage() {
         setIsPaid(true)
         setIsPending(false)
         setIsProcessing(false)
-        setPaidAmount(grandTotal) // Set paid amount for online
+        setPaidAmount(grandTotal)
         toast.success('Payment Verified by Bank!')
       } catch (error) {
         setIsProcessing(false)
@@ -146,7 +145,7 @@ export default function BillPage() {
       order.items.forEach((item) => {
         doc.text(item.name, 20, y)
         doc.text(String(item.quantity), 120, y)
-        doc.text(`Rs. ${(item.price * item.quantity).toFixed(2)}`, 150, y)
+        doc.text(`₹ ${(item.price * item.quantity).toFixed(2)}`, 150, y)
         y += 10
       })
     })
@@ -154,13 +153,13 @@ export default function BillPage() {
     y += 10
     doc.line(20, y, 190, y)
     y += 10
-    doc.text(`Subtotal: Rs. ${subtotal.toFixed(2)}`, 120, y)
+    doc.text(`Subtotal: ₹ ${subtotal.toFixed(2)}`, 120, y)
     y += 10
-    doc.text(`GST (5%): Rs. ${gst.toFixed(2)}`, 120, y)
+    doc.text(`GST (5%): ₹ ${gst.toFixed(2)}`, 120, y)
     y += 10
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(14)
-    doc.text(`Grand Total: Rs. ${grandTotal.toFixed(2)}`, 120, y)
+    doc.text(`Grand Total: ₹ ${grandTotal.toFixed(2)}`, 120, y)
 
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
@@ -185,7 +184,6 @@ export default function BillPage() {
       </div>
     )
 
-  // SUCCESS SCREEN
   if (isPaid) {
     return (
       <div className="min-h-screen bg-black py-12 px-4 flex items-center justify-center">
@@ -228,7 +226,6 @@ export default function BillPage() {
     )
   }
 
-  // BILL SCREEN
   return (
     <div className="min-h-screen bg-black py-12 px-4">
       <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
@@ -391,5 +388,20 @@ export default function BillPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// 2. Export the default component wrapped in Suspense
+export default function BillPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-amber-400">
+          Loading...
+        </div>
+      }
+    >
+      <BillContent />
+    </Suspense>
   )
 }
