@@ -13,19 +13,17 @@ exports.createMenuItem = async (req, res) => {
 
 // @desc    Get all menu items
 // @route   GET /api/menu
+// @desc    Get all menu items
+// @route   GET /api/menu
 exports.getMenuItems = async (req, res) => {
   try {
-    // If customer, only show available items. If staff, show all.
-    const filter =
-      req.user && (req.user.role === 'manager' || req.user.role === 'chef')
-        ? {}
-        : { isAvailable: true }
-    const items = await MenuItem.find(filter).sort({ category: 1 })
-    res.status(200).json(items)
+    // Return ALL items so customers can see what is sold out, and managers can see everything
+    const items = await MenuItem.find().sort({ category: 1 });
+    res.status(200).json(items);
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
 // @desc    Update a menu item (e.g., change inventory or mark sold out)
 // @route   PUT /api/menu/:id

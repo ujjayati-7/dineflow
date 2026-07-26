@@ -28,13 +28,14 @@ exports.getInsights = async (req, res) => {
 
     try {
       // Try to use real Gemini AI
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
       const prompt = `
-        You are an AI restaurant operations assistant. 
-        Here is the current menu data: ${JSON.stringify(dataContext)}.
-        
-        Task: Analyze this data. Identify items that are low on inventory and might sell out soon. Suggest which items the manager should promote to balance inventory, and which items need restocking urgently. Keep the response concise, friendly, and formatted in markdown.
-      `
+      You are an AI restaurant operations assistant. 
+      Here is the current menu data: ${JSON.stringify(dataContext)}.
+      
+      Task: Analyze this data. Identify items that are low on inventory and might sell out soon. Suggest which items the manager should promote to balance inventory, and which items need restocking urgently. Keep the response concise, friendly, and formatted in markdown.
+      IMPORTANT: All prices are in Indian Rupees (₹). Always use the ₹ symbol, never use $.
+    `
       const result = await model.generateContent(prompt)
       const response = await result.response
       text = response.text()
@@ -60,7 +61,7 @@ exports.getInsights = async (req, res) => {
 
       const topPrice = Math.max(...menuItems.map((i) => i.price))
       const topItem = menuItems.find((i) => i.price === topPrice)
-      text += `\n**💡 Profit Maximization Tip:**\nYour highest priced item is **${topItem.name}** at $${topItem.price}. Consider having waitstaff highlight this item to new tables to boost revenue.\n`
+      text += `\n**💡 Profit Maximization Tip:**\nYour highest priced item is **${topItem.name}** at ₹${topPrice}. Consider having waitstaff highlight this item to new tables to boost revenue.\n`
     }
 
     res.status(200).json({ insights: text })
@@ -69,3 +70,41 @@ exports.getInsights = async (req, res) => {
     res.status(500).json({ message: 'Failed to generate AI insights' })
   }
 }
+
+// @desc    Get AI personalized recommendation
+// @route   POST /api/ai/recommend
+exports.getRecommendation = async (req, res) => {
+  try {
+    const menuItems = await MenuItem.find({ isAvailable: true });
+    if (menuItems.length === 0) return res.status(404).json({ message: "No items available" });
+
+    const dataContext = menuItems.map(item => ({ name: item.name, description: item.description, price: item.price }));
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `
+      You are an enthusiastic restaurant food critic. 
+      Here is the available menu: ${JSON.stringify(dataContext)}.
+      Task: Pick ONE item from this list and recommend it to a hungry customer. Write a short, catchy, 1-sentence pitch about why they should order it. Do not use markdown.
+      IMPORTANT: All prices are in Indian Rupees (₹). Always use the ₹ symbol, never use $.
+    `
+
+    let text = "";
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      text = response.text();
+    } catch (aiError) {
+      console.log(
+        '⚠️ Gemini API failed, using smart fallback:',
+        aiError.message,
+      )
+      // Fallback logic if API fails
+      const randomItem = menuItems[Math.floor(Math.random() * menuItems.length)]
+      text = `You should try the ${randomItem.name}! It's a customer favorite and perfectly priced at ₹${randomItem.price}.`
+    }
+
+    res.status(200).json({ recommendation: text });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get recommendation" });
+  }
+};

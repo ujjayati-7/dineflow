@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.custom-input::placeholder{
+  color: #171717;
+  opacity: 0.5;
+}
+
+.custom-input {
+  color: #171717;
+  opacity: 1;
+}

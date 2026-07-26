@@ -9,9 +9,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body className="bg-black text-white antialiased" data-theme="dark">
         {children}
-        <Toaster position="top-center" /> {/* This makes the toasts visible! */}
+        <Toaster
+          position="top-center"
+          toastOptions={{ style: { background: '#333', color: '#fff' } }}
+        />
       </body>
     </html>
   )

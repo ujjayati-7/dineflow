@@ -63,9 +63,11 @@ exports.createOrder = async (req, res) => {
 // @route   GET /api/orders/active
 exports.getActiveOrders = async (req, res) => {
   try {
+    // Added 'pending_payment' so waiters can see pending bills!
     const orders = await Order.find({
-      status: { $in: ['received', 'preparing', 'ready'] },
+      status: { $in: ['received', 'preparing', 'ready', 'pending_payment'] },
     }).sort({ createdAt: 1 })
+
     res.status(200).json(orders)
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -87,3 +89,79 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: error.message })
   }
 }
+
+// @desc    Get bill for a specific table
+// @route   GET /api/orders/table/:tableNumber
+exports.getTableBill = async (req, res) => {
+  try {
+    const orders = await Order.find({ 
+      tableNumber: req.params.tableNumber, 
+      status: { $ne: 'paid' } 
+    });
+    
+    const subtotal = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const gst = subtotal * 0.05; // 5% GST
+    const grandTotal = subtotal + gst;
+    
+    res.status(200).json({ orders, subtotal, gst, grandTotal });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Customer requests payment method
+// @route   PUT /api/orders/table/:tableNumber/request-payment
+exports.requestPayment = async (req, res) => {
+  try {
+    const { paymentMethod } = req.body; // 'cash', 'card', or 'online'
+    await Order.updateMany(
+      { tableNumber: req.params.tableNumber, status: { $ne: 'paid' } },
+      { status: 'pending_payment', paymentMethod }
+    );
+    res.status(200).json({ message: "Payment requested. Waiter notified." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Waiter confirms payment is done
+// @route   PUT /api/orders/table/:tableNumber/confirm-payment
+exports.confirmPayment = async (req, res) => {
+  try {
+    await Order.updateMany(
+      { tableNumber: req.params.tableNumber, status: 'pending_payment' },
+      { status: 'paid' }
+    );
+    res.status(200).json({ message: "Payment confirmed successfully! Thank you." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get sales analytics
+// @route   GET /api/orders/analytics
+exports.getAnalytics = async (req, res) => {
+  try {
+    const orders = await Order.find({ status: 'paid' });
+    
+    const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalOrders = orders.length;
+    
+    // Calculate top selling items
+    const itemCounts = {};
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
+      });
+    });
+    
+    const topItems = Object.entries(itemCounts)
+      .map(([name, quantity]) => ({ name, quantity }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+
+    res.status(200).json({ totalRevenue, totalOrders, topItems });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
