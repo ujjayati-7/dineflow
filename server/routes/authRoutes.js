@@ -60,7 +60,7 @@ router.get(
     })
 
     // Redirect back to the live frontend with token in URL
-    res.redirect(`https://dineflow-mu.vercel.app`) // <--- REPLACE WITH YOUR ACTUAL VERCEL URL
+    res.redirect(`https://dineflow-hvjgrijqu-ujjayatis-projects.vercel.app`) // <--- REPLACE WITH YOUR ACTUAL VERCEL URL
   },
 )
 
