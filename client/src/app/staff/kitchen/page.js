@@ -4,8 +4,9 @@ import io from 'socket.io-client'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : 'https://dineflow-api-3nh3.onrender.com'; // <--- REPLACE WITH YOUR RENDER URL
 // Connect to the backend socket server
-const socket = io('http://localhost:5000')
+const socket = io(SOCKET_URL)
 
 export default function KitchenDashboard() {
   const [orders, setOrders] = useState([])
