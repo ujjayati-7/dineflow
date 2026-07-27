@@ -1,7 +1,9 @@
 const express = require('express')
 const router = express.Router()
-const jwt = require('jsonwebtoken')
 const passport = require('passport')
+const jwt = require('jsonwebtoken')
+const GoogleStrategy = require('passport-google-oauth20').Strategy
+const User = require('../models/User')
 const {
   registerUser,
   loginUser,
@@ -9,23 +11,57 @@ const {
 } = require('../controllers/authController')
 const { protect } = require('../middleware/authMiddleware')
 
+// Configure Google OAuth Strategy
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL:
+        'https://dineflow-api-3nh3.onrender.com/api/auth/google/callback', // <--- REPLACE WITH YOUR ACTUAL RENDER URL
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ googleId: profile.id })
+        if (!user) {
+          user = await User.create({
+            name: profile.displayName,
+            email: profile.emails[0].value,
+            googleId: profile.id,
+            role: 'customer',
+          })
+        }
+        done(null, user)
+      } catch (err) {
+        done(err, null)
+      }
+    },
+  ),
+)
+
+// Email/Password Auth Routes
 router.post('/register', registerUser)
 router.post('/login', loginUser)
 router.get('/me', protect, getMe)
 
-// @desc    Google OAuth Login
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
+// Google OAuth Routes
+router.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] }),
+)
 
-// @desc    Google OAuth Callback
-router.get('/google/callback', 
+router.get(
+  '/google/callback',
   passport.authenticate('google', { session: false }),
   (req, res) => {
     // Generate JWT for the Google user
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '30d' })
-    
-    // Redirect back to frontend with token in URL
-    res.redirect(`http://localhost:3000/login?token=${token}`)
-  }
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: '30d',
+    })
+
+    // Redirect back to the live frontend with token in URL
+    res.redirect(`https://dineflow-mu.vercel.app`) // <--- REPLACE WITH YOUR ACTUAL VERCEL URL
+  },
 )
 
 module.exports = router
