@@ -1,8 +1,7 @@
 import axios from 'axios'
 
 // Hardcode your live Render URL here
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://dineflow-api-3nh3.onrender.com/api' // <--- REPLACE WITH YOUR RENDER URL + /api
+const API_URL = 'https://dineflow-api-3nh3.onrender.com/api' // <--- REPLACE WITH YOUR RENDER URL + /api
 
 const instance = axios.create({
   baseURL: API_URL,

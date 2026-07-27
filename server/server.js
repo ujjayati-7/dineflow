@@ -20,10 +20,11 @@ const allowedOrigins = [
   'https://dineflow-mu.vercel.app', // <--- REPLACE WITH YOUR ACTUAL VERCEL URL
 ]
 
+// Allow all origins to fix CORS permanently
 const corsOptions = {
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT'],
-}
+  origin: '*', 
+  methods: ["GET", "POST", "PUT", "OPTIONS"]
+};
 
 // Middleware
 app.use(cors(corsOptions))
