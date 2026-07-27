@@ -10,7 +10,6 @@ import {
   CheckCircle,
   Download,
 } from 'lucide-react'
-import jsPDF from 'jspdf'
 
 // 1. Move all your existing logic into this inner component
 function BillContent() {
@@ -110,72 +109,77 @@ function BillContent() {
     }, 3000)
   }
 
-  const generatePDF = () => {
-    if (!contactInfo) {
-      toast.error('Please enter your Email or Phone number')
-      return
-    }
+    const generatePDF = async () => {
+      if (!contactInfo) {
+        toast.error('Please enter your Email or Phone number')
+        return
+      }
 
-    const doc = new jsPDF()
-    doc.setFontSize(24)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(200, 175, 50)
-    doc.text('The DineFlow Bistro', 20, 20)
+      // Dynamically import jsPDF only in the browser when clicked
+      const { default: jsPDF } = await import('jspdf')
 
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(100)
-    doc.text(`Table: ${tableNumber}`, 20, 30)
-    doc.text(`Date: ${new Date().toLocaleString()}`, 20, 35)
-    doc.text(`Billed To: ${contactInfo}`, 20, 40)
+      const doc = new jsPDF()
 
-    doc.setDrawColor(200)
-    doc.line(20, 45, 190, 45)
+      // Header
+      doc.setFontSize(24)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(200, 175, 50)
+      doc.text('The DineFlow Bistro', 20, 20)
 
-    let y = 55
-    doc.setTextColor(0)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Item', 20, y)
-    doc.text('Qty', 120, y)
-    doc.text('Price', 150, y)
-    y += 5
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100)
+      doc.text(`Table: ${tableNumber}`, 20, 30)
+      doc.text(`Date: ${new Date().toLocaleString()}`, 20, 35)
+      doc.text(`Billed To: ${contactInfo}`, 20, 40)
 
-    doc.setFont('helvetica', 'normal')
-    orders.forEach((order) => {
-      order.items.forEach((item) => {
-        doc.text(item.name, 20, y)
-        doc.text(String(item.quantity), 120, y)
-        doc.text(`₹ ${(item.price * item.quantity).toFixed(2)}`, 150, y)
-        y += 10
+      doc.setDrawColor(200)
+      doc.line(20, 45, 190, 45)
+
+      let y = 55
+      doc.setTextColor(0)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Item', 20, y)
+      doc.text('Qty', 120, y)
+      doc.text('Price', 150, y)
+      y += 5
+
+      doc.setFont('helvetica', 'normal')
+      orders.forEach((order) => {
+        order.items.forEach((item) => {
+          doc.text(item.name, 20, y)
+          doc.text(String(item.quantity), 120, y)
+          doc.text(`₹ ${(item.price * item.quantity).toFixed(2)}`, 150, y)
+          y += 10
+        })
       })
-    })
 
-    y += 10
-    doc.line(20, y, 190, y)
-    y += 10
-    doc.text(`Subtotal: ₹ ${subtotal.toFixed(2)}`, 120, y)
-    y += 10
-    doc.text(`GST (5%): ₹ ${gst.toFixed(2)}`, 120, y)
-    y += 10
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(14)
-    doc.text(`Grand Total: ₹ ${grandTotal.toFixed(2)}`, 120, y)
+      y += 10
+      doc.line(20, y, 190, y)
+      y += 10
+      doc.text(`Subtotal: ₹ ${subtotal.toFixed(2)}`, 120, y)
+      y += 10
+      doc.text(`GST (5%): ₹ ${gst.toFixed(2)}`, 120, y)
+      y += 10
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.text(`Grand Total: ₹ ${grandTotal.toFixed(2)}`, 120, y)
 
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(100)
-    doc.text('Thank you for dining with us! Powered by DineFlow AI.', 20, 280)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100)
+      doc.text('Thank you for dining with us! Powered by DineFlow AI.', 20, 280)
 
-    doc.save(`DineFlow_Bill_Table${tableNumber}.pdf`)
-    toast.success('Invoice downloaded!')
+      doc.save(`DineFlow_Bill_Table${tableNumber}.pdf`)
+      toast.success('Invoice downloaded!')
 
-    setTimeout(() => {
-      setIsPaid(false)
-      setOrders([])
-      setContactInfo('')
-      router.push('/')
-    }, 3000)
-  }
+      setTimeout(() => {
+        setIsPaid(false)
+        setOrders([])
+        setContactInfo('')
+        router.push('/')
+      }, 3000)
+    }
 
   if (loading)
     return (
