@@ -1,31 +1,22 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
-import { useRouter,useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { ShoppingBag, Receipt, Sparkles } from 'lucide-react'
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tableNumber = searchParams.get('table') || '1'
+
   const [menuItems, setMenuItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState([])
-  const searchParams = useSearchParams()
-  // Read 'table' from URL (?table=5). If missing, default to 1.
-  const tableNumber = searchParams.get('table') || '1' 
   const [recommendation, setRecommendation] = useState('')
   const [loadingRec, setLoadingRec] = useState(false)
   const [isStaff, setIsStaff] = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setIsStaff(false)
-    toast.success('Logged out successfully')
-    router.push('/login')
-  }
 
   const categories = ['All', 'Starters', 'Mains', 'Desserts', 'Drinks']
 
@@ -47,6 +38,14 @@ export default function Home() {
     }
     fetchMenu()
   }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setIsStaff(false)
+    toast.success('Logged out successfully')
+    router.push('/login')
+  }
 
   const addToCart = (item) => {
     const existingItem = cart.find((i) => i.menuItemId === item._id)
@@ -126,7 +125,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {isStaff && (
               <button
                 onClick={() => router.push('/staff')}
@@ -135,18 +134,21 @@ export default function Home() {
                 Staff Portal
               </button>
             )}
+
             <button
               onClick={() => router.push(`/track?table=${tableNumber}`)}
               className="text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 transition flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full"
             >
-              My Order
+              🍔 My Order
             </button>
+
             <button
               onClick={() => router.push(`/bill?table=${tableNumber}`)}
               className="text-black bg-amber-500 hover:bg-amber-400 transition flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full"
             >
               <Receipt size={16} /> View Bill
             </button>
+
             <button
               onClick={handleLogout}
               className="text-gray-400 hover:text-red-500 transition text-sm font-semibold px-4 py-2 rounded-full border border-zinc-800"
@@ -279,5 +281,20 @@ export default function Home() {
         </div>
       )}
     </div>
+  )
+}
+
+// Wrap in Suspense to fix Vercel build error with useSearchParams
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center text-amber-400">
+          Loading...
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   )
 }

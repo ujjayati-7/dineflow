@@ -1,44 +1,41 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Mail, Lock } from 'lucide-react'
 
-export default function Login() {
+function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const router = useRouter()
   const searchParams = useSearchParams()
 
-   useEffect(() => {
-     const token = searchParams.get('token')
-     if (token) {
-       localStorage.setItem('token', token)
+  useEffect(() => {
+    const token = searchParams.get('token')
+    if (token) {
+      localStorage.setItem('token', token)
 
-       // Fetch the actual user data using the new token
-       const fetchUser = async () => {
-         try {
-           const res = await axios.get('/auth/me')
-           localStorage.setItem('user', JSON.stringify(res.data))
-           toast.success('Logged in with Google!')
+      const fetchUser = async () => {
+        try {
+          const res = await axios.get('/auth/me')
+          localStorage.setItem('user', JSON.stringify(res.data))
+          toast.success('Logged in with Google!')
 
-           // Redirect based on actual role
-           if (res.data.role === 'customer') {
-             router.push('/')
-           } else {
-             router.push('/staff')
-           }
-         } catch (error) {
-           toast.error('Failed to fetch user profile')
-           router.push('/')
-         }
-       }
+          if (res.data.role === 'customer') {
+            router.push('/')
+          } else {
+            router.push('/staff')
+          }
+        } catch (error) {
+          toast.error('Failed to fetch user profile')
+          router.push('/')
+        }
+      }
 
-       fetchUser()
-     }
-   }, [searchParams, router])
+      fetchUser()
+    }
+  }, [searchParams, router])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -75,7 +72,7 @@ export default function Login() {
         </div>
 
         <a
-          href="http://localhost:5000/api/auth/google"
+          href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
           className="w-full flex items-center justify-center gap-3 bg-zinc-800 border border-zinc-700 hover:border-amber-500/50 p-3.5 rounded-xl font-semibold hover:bg-zinc-800/50 transition mb-6 text-white"
         >
           <svg width="20" height="20" viewBox="0 0 24 24">
@@ -142,5 +139,20 @@ export default function Login() {
         </form>
       </div>
     </div>
+  )
+}
+
+// Wrap in Suspense to fix Vercel build error with useSearchParams
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center text-amber-400">
+          Loading...
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   )
 }
