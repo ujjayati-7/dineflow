@@ -72,7 +72,7 @@ function LoginContent() {
         </div>
 
         <a
-          href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
+          href="https://dineflow-api-3nh3.onrender.com/api/auth/google"
           className="w-full flex items-center justify-center gap-3 bg-zinc-800 border border-zinc-700 hover:border-amber-500/50 p-3.5 rounded-xl font-semibold hover:bg-zinc-800/50 transition mb-6 text-white"
         >
           <svg width="20" height="20" viewBox="0 0 24 24">
